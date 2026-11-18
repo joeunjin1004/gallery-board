@@ -2,6 +2,9 @@
 
 Google Cloud **Firebase Firestore**(데이터베이스), **Firebase Authentication**(사용자 인증), **Cloudinary**(클라우드 이미지 호스팅)가 완벽하게 통합된 풀스택 반응형 갤러리 게시판입니다.
 
+- **🌐 Live Demo (Vercel 배포)**: [https://galleryboard-plum.vercel.app](https://galleryboard-plum.vercel.app)
+- **📦 GitHub Repository**: [https://github.com/joeunjin1004/gallery-board](https://github.com/joeunjin1004/gallery-board)
+
 ---
 
 ## 📌 주요 구현 기능

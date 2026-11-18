@@ -97,6 +97,8 @@
         <div class="detail-image-wrapper">
           <img id="detail-image" class="detail-image" src="" alt="게시글 대표 이미지">
         </div>
+        <!-- 다중 이미지 썸네일 탐색기 (사진 2장 이상일 때 노출) -->
+        <div id="detail-thumbnails-bar" class="detail-thumbnails-bar" style="display: none;"></div>
         <div class="detail-meta">
           <div class="detail-author-info">
             <span>👤 작성자:</span>
@@ -134,31 +136,30 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label">대표 이미지 (선택)</label>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-              이미지를 첨부하지 않으면 기본 갤러리 이미지가 자동 적용됩니다.
+            <label class="form-label">사진 첨부 & 대표 이미지 설정 (선택)</label>
+            <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.6rem;">
+              여러 장의 사진을 첨부할 수 있으며, 원하는 사진을 클릭해 <strong>[대표 이미지]</strong>로 지정할 수 있습니다. (미첨부 시 기본 풍경 사진 자동 적용)
             </p>
 
-            <!-- 파일 선택 인풋 (숨김) -->
-            <input type="file" id="post-image-file" accept="image/*" style="display: none;">
-            <input type="hidden" id="existing-image-url" value="">
+            <!-- 파일 선택 인풋 (다중 선택 multiple 지원) -->
+            <input type="file" id="post-image-file" accept="image/*" multiple style="display: none;">
 
             <!-- 드롭존 / 업로드 영역 -->
             <div id="upload-dropzone" class="upload-dropzone">
-              <div class="upload-icon">☁️</div>
-              <p class="upload-text"><strong>클릭</strong>하여 사진을 선택하거나 여기로 <strong>드래그</strong>하세요</p>
-              <p class="upload-hint">JPG, PNG, GIF, WebP (최대 10MB)</p>
+              <div class="upload-icon">📸</div>
+              <p class="upload-text"><strong>클릭</strong>하여 사진들을 선택하거나 여기로 <strong>드래그</strong>하세요</p>
+              <p class="upload-hint">여러 장 동시 선택 가능 • JPG, PNG, GIF, WebP (장당 최대 10MB)</p>
             </div>
 
-            <!-- 선택된 이미지 미리보기 -->
-            <div id="image-preview-container" class="image-preview-container" style="display: none;">
-              <div class="preview-image-wrapper">
-                <img id="image-preview" src="" alt="선택된 이미지 미리보기">
-                <button type="button" id="btn-remove-image" class="btn-remove-image" title="이미지 제거">&times;</button>
+            <!-- 다중 이미지 미리보기 & 대표 설정 영역 -->
+            <div id="multi-preview-section" class="multi-preview-section" style="display: none;">
+              <div class="multi-preview-header">
+                <span class="preview-count-text">첨부된 사진: <strong id="attached-photos-count">0</strong>장</span>
+                <button type="button" id="btn-add-more-photos" class="btn btn-outline btn-sm">+ 사진 추가하기</button>
               </div>
-              <div class="preview-info">
-                <span id="preview-filename" class="preview-filename">image.jpg</span>
-                <button type="button" id="btn-change-image" class="btn btn-outline btn-sm">이미지 변경</button>
+              <p class="cover-guide-text">⭐ 원하는 사진을 클릭하여 게시판 목록에 노출될 <strong>대표 이미지</strong>로 지정하세요.</p>
+              <div id="multi-preview-grid" class="multi-preview-grid">
+                <!-- 자바스크립트로 썸네일 카드 동적 렌더링 -->
               </div>
             </div>
 
@@ -168,7 +169,7 @@
                 <div id="upload-progress-bar" class="progress-bar-fill" style="width: 0%;"></div>
               </div>
               <div class="upload-status-row">
-                <span id="upload-status-text" class="upload-status-text">Cloudinary 업로드 중... 0%</span>
+                <span id="upload-status-text" class="upload-status-text">Cloudinary 다중 업로드 중... 0%</span>
               </div>
             </div>
           </div>

@@ -1,6 +1,8 @@
 /**
  * 갤러리 보드 메인 애플리케이션 로직
- * Firebase Firestore, Firebase Authentication, Cloudinary & 회원별 사진 모아보기 필터 통합
+ * - Firebase Firestore, Firebase Authentication, Cloudinary 연동
+ * - 회원별 사진 모아보기 필터
+ * - 사진 여러 장 첨부 및 대표 이미지(커버 사진) 설정 기능 통합
  */
 (function() {
   const postService = window.postService;
@@ -31,10 +33,11 @@
   const detailDate = document.getElementById('detail-date');
   const detailContent = document.getElementById('detail-content');
   const detailImage = document.getElementById('detail-image');
+  const detailThumbnailsBar = document.getElementById('detail-thumbnails-bar');
   const btnDetailEdit = document.getElementById('btn-detail-edit');
   const btnDetailDelete = document.getElementById('btn-detail-delete');
 
-  // DOM 요소 캐싱 - 작성/수정 모달 & Cloudinary 업로드
+  // DOM 요소 캐싱 - 작성/수정 모달 & 다중 이미지 업로더
   const formModal = document.getElementById('form-modal');
   const postForm = document.getElementById('post-form');
   const formModalTitle = document.getElementById('form-modal-title');
@@ -42,13 +45,11 @@
   const postTitleInput = document.getElementById('post-title');
   const postContentInput = document.getElementById('post-content');
   const postImageFileInput = document.getElementById('post-image-file');
-  const existingImageUrlInput = document.getElementById('existing-image-url');
   const uploadDropzone = document.getElementById('upload-dropzone');
-  const imagePreviewContainer = document.getElementById('image-preview-container');
-  const imagePreview = document.getElementById('image-preview');
-  const previewFilename = document.getElementById('preview-filename');
-  const btnRemoveImage = document.getElementById('btn-remove-image');
-  const btnChangeImage = document.getElementById('btn-change-image');
+  const multiPreviewSection = document.getElementById('multi-preview-section');
+  const attachedPhotosCount = document.getElementById('attached-photos-count');
+  const btnAddMorePhotos = document.getElementById('btn-add-more-photos');
+  const multiPreviewGrid = document.getElementById('multi-preview-grid');
   const uploadProgressContainer = document.getElementById('upload-progress-container');
   const uploadProgressBar = document.getElementById('upload-progress-bar');
   const uploadStatusText = document.getElementById('upload-status-text');
@@ -74,8 +75,9 @@
   let currentFilter = { type: 'all', id: null, name: '전체' }; // 'all' | 'my' | 'member'
   let currentDetailPost = null; // 현재 열람 중인 게시글 객체
   let currentAuthMode = 'login'; // 'login' | 'signup'
-  let currentSelectedFile = null; // 사용자가 새로 선택한 이미지 파일
-  let currentExistingImageUrl = ''; // 수정 모드 시 기존 이미지 URL
+
+  // 첨부된 다중 이미지 상태 배열: [ { id, file: File|null, previewUrl: string, isCover: boolean } ]
+  let attachedImages = [];
 
   // =========================================================
   // 날짜 포맷 유틸
@@ -128,13 +130,11 @@
     } else {
       guestActions.style.display = 'flex';
       userActions.style.display = 'none';
-      // 만약 '내 사진 모아보기' 필터 중 로그아웃된 경우 '전체'로 초기화
       if (currentFilter.type === 'my') {
         applyFilter('all');
       }
     }
 
-    // 회원 필터 칩 바 재계산 및 렌더링
     renderMemberFilterChips();
 
     if (currentDetailPost) {
@@ -219,17 +219,9 @@
   // =========================================================
   // 3. 회원별 사진 모아보기 필터 로직
   // =========================================================
-
-  /**
-   * 필터 적용 함수
-   * @param {'all'|'my'|'member'} type 필터 타입
-   * @param {string|null} id 회원 UID 또는 고유 식별자
-   * @param {string} name 화면에 표시할 회원 이름
-   */
   function applyFilter(type, id = null, name = '전체') {
     currentFilter = { type, id, name };
 
-    // 인디케이터 표시 제어
     if (type === 'all') {
       activeFilterIndicator.style.display = 'none';
     } else {
@@ -241,26 +233,20 @@
     renderFilteredGallery();
   }
 
-  /**
-   * 회원 필터 칩 목록 동적 렌더링
-   */
   function renderMemberFilterChips() {
     if (!memberFilterChips) return;
 
     const currentUser = authService.getCurrentUser();
     const totalCount = cachedAllPosts.length;
 
-    // 1. 고유 회원 및 글 개수 집계
     const memberMap = new Map();
     let myCount = 0;
 
     cachedAllPosts.forEach(post => {
-      // 내 사진 개수 계산
       if (currentUser && post.authorId && post.authorId === currentUser.uid) {
         myCount++;
       }
 
-      // 회원별 그룹화 키 (authorId 우선, 없으면 authorName)
       const memberKey = post.authorId || post.authorName || 'unknown';
       const memberDisplayName = post.authorName || (post.authorEmail ? post.authorEmail.split('@')[0] : '익명 사용자');
 
@@ -283,7 +269,6 @@
       </button>
     `;
 
-    // 로그인 상태이고 내가 작성한 글이 있다면 '내 사진 모아보기' 칩 추가
     if (currentUser && myCount > 0) {
       chipsHtml += `
         <button type="button" class="filter-chip chip-my ${currentFilter.type === 'my' ? 'active' : ''}" data-filter-type="my">
@@ -293,9 +278,7 @@
       `;
     }
 
-    // 각 회원별 칩 생성
     members.forEach(member => {
-      // 로그인한 본인의 별도 칩과 중복되지 않도록 처리
       const isMyKey = currentUser && member.id && member.id === currentUser.uid;
       const isCurrentActive = currentFilter.type === 'member' && 
         ((member.id && currentFilter.id === member.id) || (!member.id && currentFilter.name === member.name));
@@ -313,7 +296,6 @@
 
     memberFilterChips.innerHTML = chipsHtml;
 
-    // 칩 클릭 이벤트 바인딩
     memberFilterChips.querySelectorAll('.filter-chip').forEach(btn => {
       btn.addEventListener('click', () => {
         const type = btn.dataset.filterType;
@@ -330,9 +312,6 @@
     });
   }
 
-  /**
-   * 현재 필터 조건에 따라 필터링된 게시글 렌더링
-   */
   function renderFilteredGallery() {
     const currentUser = authService.getCurrentUser();
     let filteredPosts = cachedAllPosts;
@@ -352,7 +331,7 @@
   }
 
   // =========================================================
-  // 4. 갤러리 목록 렌더링
+  // 4. 갤러리 목록 렌더링 (대표 이미지 + 사진 장수 뱃지)
   // =========================================================
   function renderGalleryList(posts) {
     const isFiltered = currentFilter.type !== 'all';
@@ -379,13 +358,16 @@
     galleryGrid.innerHTML = posts.map(post => {
       const excerpt = post.content ? post.content.replace(/\n+/g, ' ') : '';
       const authorText = post.authorName || '익명 사용자';
-      const displayImageUrl = post.imageUrl || (cloudinaryService ? cloudinaryService.defaultImage : 'images/default-landscape.jpg');
+      const displayCoverUrl = post.imageUrl || (cloudinaryService ? cloudinaryService.defaultImage : 'images/default-landscape.jpg');
+      const photoCount = Array.isArray(post.images) && post.images.length > 0 ? post.images.length : 1;
 
       return `
         <article class="gallery-card" data-post-id="${post.id}" tabindex="0" role="button" aria-label="${escapeHtml(post.title)} 상세보기">
           <div class="card-thumbnail-wrapper">
+            <!-- 사진 여러 장일 경우 장수 뱃지 표시 -->
+            ${photoCount > 1 ? `<div class="card-photos-badge">📷 ${photoCount}장</div>` : ''}
             <img class="card-thumbnail" 
-                 src="${escapeHtml(displayImageUrl)}" 
+                 src="${escapeHtml(displayCoverUrl)}" 
                  alt="${escapeHtml(post.title)}" 
                  loading="lazy" 
                  referrerpolicy="no-referrer"
@@ -395,7 +377,6 @@
             <h3 class="card-title">${escapeHtml(post.title)}</h3>
             <p class="card-excerpt">${escapeHtml(excerpt)}</p>
             <div class="card-footer">
-              <!-- 작성자 이름 클릭 시 해당 회원의 사진만 모아보기 -->
               <button type="button" 
                       class="card-author-btn" 
                       data-filter-author-id="${post.authorId || ''}" 
@@ -442,7 +423,7 @@
   }
 
   // =========================================================
-  // 5. 상세 보기 모달 & 본인 게시글 권한 제어
+  // 5. 상세 보기 모달 (대표 이미지 + 다중 썸네일 스트립 네비게이션)
   // =========================================================
   function updateDetailModalActionButtons(post) {
     const currentUser = authService.getCurrentUser();
@@ -468,13 +449,45 @@
       detailDate.textContent = `📅 작성일: ${formatDate(post.createdAt)}` + 
         (post.updatedAt && post.updatedAt !== post.createdAt ? ` (수정일: ${formatDate(post.updatedAt)})` : '');
       detailContent.textContent = post.content;
+
+      // 대표 이미지 또는 첫 번째 이미지 설정
+      const mainImgUrl = post.imageUrl || (post.images && post.images[0]) || cloudinaryService.defaultImage;
       detailImage.referrerPolicy = 'no-referrer';
       detailImage.onerror = function() {
         this.onerror = null;
         this.src = 'images/default-landscape.jpg';
       };
-      detailImage.src = post.imageUrl || (cloudinaryService ? cloudinaryService.defaultImage : 'images/default-landscape.jpg');
+      detailImage.src = mainImgUrl;
       detailImage.alt = post.title;
+
+      // 다중 이미지 썸네일 스트립 구성
+      const imagesList = Array.isArray(post.images) && post.images.length > 0 
+        ? post.images 
+        : [mainImgUrl];
+
+      if (imagesList.length > 1) {
+        detailThumbnailsBar.style.display = 'flex';
+        detailThumbnailsBar.innerHTML = imagesList.map((imgUrl, idx) => {
+          const isCurrentActive = imgUrl === mainImgUrl;
+          return `
+            <div class="detail-thumb-item ${isCurrentActive ? 'active' : ''}" data-thumb-url="${escapeHtml(imgUrl)}">
+              <img src="${escapeHtml(imgUrl)}" alt="사진 ${idx + 1}" onerror="this.src='images/default-landscape.jpg';">
+            </div>
+          `;
+        }).join('');
+
+        // 썸네일 클릭 시 메인 이미지 전환 이벤트 바인딩
+        detailThumbnailsBar.querySelectorAll('.detail-thumb-item').forEach(thumb => {
+          thumb.addEventListener('click', () => {
+            detailThumbnailsBar.querySelectorAll('.detail-thumb-item').forEach(el => el.classList.remove('active'));
+            thumb.classList.add('active');
+            detailImage.src = thumb.dataset.thumbUrl;
+          });
+        });
+      } else {
+        detailThumbnailsBar.style.display = 'none';
+        detailThumbnailsBar.innerHTML = '';
+      }
 
       updateDetailModalActionButtons(post);
       openModal(detailModal);
@@ -485,60 +498,141 @@
   }
 
   // =========================================================
-  // 6. 이미지 업로더 UI 및 파일 처리 로직
+  // 6. 다중 이미지 업로더 & 대표 사진 설정 UI 로직
   // =========================================================
-  function showDropzone() {
-    uploadDropzone.style.display = 'flex';
-    imagePreviewContainer.style.display = 'none';
-    uploadProgressContainer.style.display = 'none';
-    imagePreview.src = '';
-    previewFilename.textContent = '';
-  }
-
-  function showPreview(imageSrc, filename = '선택된 이미지') {
-    uploadDropzone.style.display = 'none';
-    imagePreviewContainer.style.display = 'block';
-    imagePreview.referrerPolicy = 'no-referrer';
-    imagePreview.onerror = function() {
-      this.onerror = null;
-      this.src = 'images/default-landscape.jpg';
-    };
-    imagePreview.src = imageSrc;
-    previewFilename.textContent = filename;
-  }
 
   function resetImageUploader() {
-    currentSelectedFile = null;
-    currentExistingImageUrl = '';
+    attachedImages = [];
     postImageFileInput.value = '';
-    existingImageUrlInput.value = '';
     uploadProgressContainer.style.display = 'none';
     uploadProgressBar.style.width = '0%';
     uploadStatusText.textContent = '';
-    showDropzone();
+    updateMultiPreviewUI();
   }
 
-  function handleFileSelected(file) {
-    if (!file) return;
+  /**
+   * 다중 이미지 미리보기 영역 렌더링
+   */
+  function updateMultiPreviewUI() {
+    const totalCount = attachedImages.length;
+    attachedPhotosCount.textContent = totalCount;
 
-    if (!file.type.startsWith('image/')) {
-      alert('이미지 파일(JPG, PNG, GIF, WebP 등)만 선택할 수 있습니다.');
+    if (totalCount === 0) {
+      uploadDropzone.style.display = 'flex';
+      multiPreviewSection.style.display = 'none';
+      multiPreviewGrid.innerHTML = '';
       return;
     }
 
-    const MAX_SIZE = 10 * 1024 * 1024;
-    if (file.size > MAX_SIZE) {
-      alert('파일 크기는 최대 10MB까지 가능합니다.');
-      return;
+    uploadDropzone.style.display = 'none';
+    multiPreviewSection.style.display = 'block';
+
+    // 대표 이미지가 하나도 지정되지 않았다면 첫 번째 사진을 대표 이미지로 지정
+    const hasCover = attachedImages.some(img => img.isCover);
+    if (!hasCover && attachedImages.length > 0) {
+      attachedImages[0].isCover = true;
     }
 
-    currentSelectedFile = file;
+    multiPreviewGrid.innerHTML = attachedImages.map((item, index) => {
+      return `
+        <div class="preview-card ${item.isCover ? 'is-cover' : ''}" data-index="${index}">
+          ${item.isCover ? '<span class="cover-badge">★ 대표 이미지</span>' : ''}
+          <button type="button" class="btn-card-remove" data-remove-index="${index}" title="사진 삭제">&times;</button>
+          <img src="${escapeHtml(item.previewUrl)}" alt="첨부 사진 ${index + 1}" onerror="this.src='images/default-landscape.jpg';">
+          <button type="button" class="btn-set-cover" data-cover-index="${index}">대표로 설정</button>
+        </div>
+      `;
+    }).join('');
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      showPreview(e.target.result, file.name);
-    };
-    reader.readAsDataURL(file);
+    // 이벤트 바인딩: 카드 클릭 시 또는 '대표로 설정' 클릭 시 대표 이미지 지정
+    multiPreviewGrid.querySelectorAll('.preview-card').forEach(card => {
+      card.addEventListener('click', (e) => {
+        // 삭제 버튼 클릭은 제외
+        if (e.target.closest('.btn-card-remove')) return;
+
+        const idx = parseInt(card.dataset.index, 10);
+        setCoverImage(idx);
+      });
+    });
+
+    // 개별 사진 삭제 버튼 바인딩
+    multiPreviewGrid.querySelectorAll('.btn-card-remove').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.removeIndex, 10);
+        removeAttachedImage(idx);
+      });
+    });
+  }
+
+  /**
+   * 대표 이미지 지정
+   */
+  function setCoverImage(index) {
+    if (index < 0 || index >= attachedImages.length) return;
+    attachedImages.forEach((img, i) => {
+      img.isCover = (i === index);
+    });
+    updateMultiPreviewUI();
+  }
+
+  /**
+   * 첨부 이미지 삭제
+   */
+  function removeAttachedImage(index) {
+    if (index < 0 || index >= attachedImages.length) return;
+    const wasCover = attachedImages[index].isCover;
+    attachedImages.splice(index, 1);
+
+    // 대표 이미지를 삭제했다면 첫 번째 남은 사진을 대표로 지정
+    if (wasCover && attachedImages.length > 0) {
+      attachedImages[0].isCover = true;
+    }
+
+    updateMultiPreviewUI();
+  }
+
+  /**
+   * 파일 선택 처리 (다중 파일)
+   */
+  function handleFilesSelected(fileList) {
+    if (!fileList || fileList.length === 0) return;
+
+    const files = Array.from(fileList);
+    const validFiles = [];
+
+    for (const file of files) {
+      if (!file.type.startsWith('image/')) {
+        alert(`'${file.name}'은(는) 이미지 파일이 아닙니다.`);
+        continue;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`'${file.name}' 파일이 너무 큽니다. (최대 10MB)`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length === 0) return;
+
+    let loadedCount = 0;
+    validFiles.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        attachedImages.push({
+          id: 'new_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+          file: file,
+          previewUrl: e.target.result,
+          isCover: attachedImages.length === 0 // 첫 번째 사진이면 자동으로 대표 이미지
+        });
+
+        loadedCount++;
+        if (loadedCount === validFiles.length) {
+          updateMultiPreviewUI();
+        }
+      };
+      reader.readAsDataURL(file);
+    });
   }
 
   // =========================================================
@@ -594,12 +688,20 @@
 
       resetImageUploader();
 
-      if (post.imageUrl) {
-        currentExistingImageUrl = post.imageUrl;
-        existingImageUrlInput.value = post.imageUrl;
-        showPreview(post.imageUrl, '기존 등록된 이미지');
-      } else {
-        showDropzone();
+      // 기존 등록된 다중 이미지 불러오기
+      const existingList = Array.isArray(post.images) && post.images.length > 0 
+        ? post.images 
+        : (post.imageUrl ? [post.imageUrl] : []);
+
+      if (existingList.length > 0) {
+        const coverTarget = post.imageUrl || existingList[0];
+        attachedImages = existingList.map((url, idx) => ({
+          id: 'exist_' + idx + '_' + Math.random().toString(36).substr(2, 5),
+          file: null, // 이미 업로드되어 있는 URL
+          previewUrl: url,
+          isCover: (url === coverTarget) || (idx === 0)
+        }));
+        updateMultiPreviewUI();
       }
 
       openModal(formModal);
@@ -610,7 +712,7 @@
     }
   }
 
-  // 게시글 폼 제출 (Cloudinary 업로드 -> Firestore 저장)
+  // 게시글 폼 제출 (Cloudinary 다중 업로드 -> Firestore 저장)
   async function handlePostFormSubmit(event) {
     event.preventDefault();
 
@@ -640,33 +742,67 @@
     try {
       btnFormSubmit.disabled = true;
 
-      let finalImageUrl = currentExistingImageUrl || '';
+      const finalUrls = [];
+      let finalCoverUrl = '';
 
-      if (currentSelectedFile) {
-        uploadProgressContainer.style.display = 'block';
-        uploadProgressBar.style.width = '0%';
-        uploadStatusText.textContent = 'Cloudinary에 이미지 업로드 중... 0%';
-        btnFormSubmit.textContent = '이미지 업로드 중...';
+      // 1. 이미지가 첨부되지 않은 경우 -> 기본 감성 풍경 사진 적용
+      if (attachedImages.length === 0) {
+        finalCoverUrl = cloudinaryService.defaultImage;
+        finalUrls.push(finalCoverUrl);
+      } else {
+        // 2. 이미지가 첨부되어 있는 경우: 새 파일 업로드 진행
+        const newFilesToUpload = attachedImages.filter(item => item.file !== null);
 
-        finalImageUrl = await cloudinaryService.uploadImage(currentSelectedFile, (percent) => {
-          uploadProgressBar.style.width = `${percent}%`;
-          uploadStatusText.textContent = `Cloudinary에 이미지 업로드 중... ${percent}%`;
+        if (newFilesToUpload.length > 0) {
+          uploadProgressContainer.style.display = 'block';
+          uploadProgressBar.style.width = '0%';
+          uploadStatusText.textContent = `Cloudinary에 사진 업로드 중... 0% (총 ${newFilesToUpload.length}장)`;
+          btnFormSubmit.textContent = '사진 업로드 중...';
+
+          for (let i = 0; i < attachedImages.length; i++) {
+            const item = attachedImages[i];
+            if (item.file) {
+              const uploadedUrl = await cloudinaryService.uploadImage(item.file, (singlePercent) => {
+                const overall = Math.round(((i + (singlePercent / 100)) / attachedImages.length) * 100);
+                uploadProgressBar.style.width = `${overall}%`;
+                uploadStatusText.textContent = `Cloudinary 업로드 중... ${overall}% (${i + 1}/${attachedImages.length})`;
+              });
+              item.previewUrl = uploadedUrl;
+              item.file = null; // 업로드 완료
+            }
+          }
+        }
+
+        // 전체 URL 배열 구성 및 대표 이미지 추출
+        attachedImages.forEach(item => {
+          finalUrls.push(item.previewUrl);
+          if (item.isCover) {
+            finalCoverUrl = item.previewUrl;
+          }
         });
+
+        // 대표 이미지가 지정되지 않았으면 첫 번째 사진을 대표로 지정
+        if (!finalCoverUrl && finalUrls.length > 0) {
+          finalCoverUrl = finalUrls[0];
+        }
       }
 
       btnFormSubmit.textContent = editId ? '수정 내용 저장 중...' : '게시글 저장 중...';
 
+      // 3. Firestore에 대표 이미지 및 다중 사진 배열 저장
       if (editId) {
         await postService.updatePost(editId, { 
           title, 
           content, 
-          imageUrl: finalImageUrl || cloudinaryService.defaultImage 
+          imageUrl: finalCoverUrl,
+          images: finalUrls
         });
       } else {
         await postService.createPost({ 
           title, 
           content, 
-          imageUrl: finalImageUrl || cloudinaryService.defaultImage 
+          imageUrl: finalCoverUrl,
+          images: finalUrls
         });
       }
 
@@ -741,14 +877,13 @@
     });
     authForm?.addEventListener('submit', handleAuthSubmit);
 
-    // 이미지 업로드 인터랙션 (드롭존 & 파일 선택)
+    // 다중 이미지 업로드 인터랙션 (드롭존 & 파일 선택)
     uploadDropzone?.addEventListener('click', () => postImageFileInput.click());
-    btnChangeImage?.addEventListener('click', () => postImageFileInput.click());
+    btnAddMorePhotos?.addEventListener('click', () => postImageFileInput.click());
 
     postImageFileInput?.addEventListener('change', (e) => {
-      const file = e.target.files && e.target.files[0];
-      if (file) {
-        handleFileSelected(file);
+      if (e.target.files && e.target.files.length > 0) {
+        handleFilesSelected(e.target.files);
       }
     });
 
@@ -771,23 +906,13 @@
 
     uploadDropzone?.addEventListener('drop', (e) => {
       const dt = e.dataTransfer;
-      const file = dt.files && dt.files[0];
-      if (file) {
-        handleFileSelected(file);
+      if (dt.files && dt.files.length > 0) {
+        handleFilesSelected(dt.files);
       }
-    });
-
-    btnRemoveImage?.addEventListener('click', () => {
-      currentSelectedFile = null;
-      currentExistingImageUrl = '';
-      postImageFileInput.value = '';
-      existingImageUrlInput.value = '';
-      showDropzone();
     });
 
     // 갤러리 카드 및 작성자 클릭 이벤트 위임
     galleryGrid.addEventListener('click', (e) => {
-      // 1. 작성자 이름 버튼 클릭 시 -> 해당 회원 사진 필터 적용!
       const authorBtn = e.target.closest('.card-author-btn');
       if (authorBtn) {
         e.stopPropagation();
@@ -797,7 +922,6 @@
         return;
       }
 
-      // 2. 카드 본체 클릭 시 -> 상세 모달 오픈
       const card = e.target.closest('.gallery-card');
       if (card && card.dataset.postId) {
         openDetailModal(card.dataset.postId);
@@ -813,7 +937,7 @@
       }
     });
 
-    // 상세 모달 내 작성자 클릭 시에도 해당 회원 모아보기 지원
+    // 상세 모달 내 작성자 클릭 시 해당 회원 모아보기 지원
     detailAuthor?.addEventListener('click', () => {
       if (currentDetailPost) {
         closeModal(detailModal);

@@ -1,5 +1,5 @@
 /**
- * Cloudinary 이미지 업로드 서비스 모듈
+ * Cloudinary 다중 이미지 업로드 서비스 모듈
  * 
  * Cloud Name: ybpqeq2p
  * Upload Preset: gallery_borad
@@ -20,7 +20,7 @@
     }
 
     /**
-     * 이미지 파일을 Cloudinary로 비동기 업로드 (진행률 콜백 지원)
+     * 단일 이미지 파일 업로드
      * @param {File} file 이미지 파일 객체
      * @param {Function} [onProgress] 진행률 콜백 (percent: 0~100)
      * @returns {Promise<string>} 업로드된 이미지의 secure_url
@@ -32,16 +32,14 @@
           return;
         }
 
-        // 이미지 파일 형식 검증
         if (!file.type.startsWith('image/')) {
           reject(new Error('이미지 파일(JPG, PNG, GIF, WebP 등)만 업로드할 수 있습니다.'));
           return;
         }
 
-        // 파일 크기 제한 (10MB)
         const MAX_SIZE = 10 * 1024 * 1024;
         if (file.size > MAX_SIZE) {
-          reject(new Error('파일 크기가 너무 큽니다. (최대 10MB까지 가능)'));
+          reject(new Error(`'${file.name}' 파일 크기가 너무 큽니다. (최대 10MB까지 가능)`));
           return;
         }
 
@@ -52,7 +50,6 @@
         const xhr = new XMLHttpRequest();
         xhr.open('POST', UPLOAD_URL, true);
 
-        // 진행률(Progress) 이벤트 리스너
         if (xhr.upload && typeof onProgress === 'function') {
           xhr.upload.onprogress = (event) => {
             if (event.lengthComputable) {
@@ -94,6 +91,40 @@
 
         xhr.send(formData);
       });
+    }
+
+    /**
+     * 여러 장의 이미지 파일들을 병렬/순차 업로드
+     * @param {File[]} files 업로드할 파일 목록
+     * @param {Function} [onOverallProgress] 전체 진행 상태 콜백 (percent, completedCount, totalCount)
+     * @returns {Promise<string[]>} 업로드된 secure_url 목록
+     */
+    async uploadMultipleImages(files, onOverallProgress) {
+      if (!files || files.length === 0) {
+        return [];
+      }
+
+      const total = files.length;
+      let completed = 0;
+      const uploadedUrls = [];
+
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const url = await this.uploadImage(file, (singlePercent) => {
+          if (typeof onOverallProgress === 'function') {
+            const overall = Math.round(((completed + (singlePercent / 100)) / total) * 100);
+            onOverallProgress(overall, completed, total);
+          }
+        });
+        uploadedUrls.push(url);
+        completed++;
+        if (typeof onOverallProgress === 'function') {
+          const overall = Math.round((completed / total) * 100);
+          onOverallProgress(overall, completed, total);
+        }
+      }
+
+      return uploadedUrls;
     }
   }
 

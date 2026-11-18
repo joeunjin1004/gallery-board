@@ -489,6 +489,26 @@ body {
   transform: scale(1.06);
 }
 
+/* 카드 썸네일 우측 상단 다중 사진 장수 뱃지 */
+.card-photos-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: rgba(15, 23, 42, 0.75);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  z-index: 2;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  letter-spacing: -0.01em;
+}
+
 /* 카드 본문 */
 .card-body {
   padding: 1.5rem;
@@ -688,6 +708,56 @@ body {
   display: block;
 }
 
+/* 상세 모달 다중 이미지 가로 썸네일 스트립 */
+.detail-thumbnails-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  overflow-x: auto;
+  padding: 0.25rem 0 0.85rem;
+  margin-bottom: 1.25rem;
+  scrollbar-width: thin;
+}
+
+.detail-thumbnails-bar::-webkit-scrollbar {
+  height: 6px;
+}
+
+.detail-thumbnails-bar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.detail-thumb-item {
+  width: 84px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid #e2e8f0;
+  transition: var(--transition);
+  position: relative;
+  background-color: #f1f5f9;
+}
+
+.detail-thumb-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.detail-thumb-item:hover {
+  transform: translateY(-2px);
+  border-color: #93c5fd;
+}
+
+.detail-thumb-item.active {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
 .detail-meta {
   display: flex;
   align-items: center;
@@ -867,6 +937,151 @@ body {
 .upload-hint {
   font-size: 0.88rem;
   color: var(--text-muted);
+}
+
+/* =========================================================
+   다중 사진 미리보기 그리드 & 대표 이미지 설정
+   ========================================================= */
+.multi-preview-section {
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  margin-top: 1rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.multi-preview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.65rem;
+}
+
+.preview-count-text {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.cover-guide-text {
+  font-size: 0.82rem;
+  color: var(--primary-color);
+  background-color: var(--primary-light);
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 1rem;
+  display: inline-block;
+  width: 100%;
+}
+
+.multi-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+}
+
+@media (max-width: 600px) {
+  .multi-preview-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.preview-card {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 2px solid var(--border-color);
+  background-color: #f1f5f9;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.preview-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.preview-card:hover {
+  transform: translateY(-2px);
+  border-color: #93c5fd;
+}
+
+.preview-card.is-cover {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+}
+
+.cover-badge {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: linear-gradient(135deg, #eab308, #ca8a04);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 800;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  z-index: 2;
+}
+
+.btn-set-cover {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  background-color: rgba(15, 23, 42, 0.8);
+  color: #ffffff;
+  border: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.3rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  backdrop-filter: blur(2px);
+  z-index: 2;
+}
+
+.preview-card:hover .btn-set-cover {
+  opacity: 1;
+}
+
+.preview-card.is-cover .btn-set-cover {
+  display: none;
+}
+
+.btn-card-remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  background-color: rgba(15, 23, 42, 0.8);
+  color: #ffffff;
+  border: none;
+  border-radius: 50%;
+  font-size: 1.15rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition);
+  z-index: 3;
+}
+
+.btn-card-remove:hover {
+  background-color: var(--danger-color);
+  transform: scale(1.15);
 }
 
 /* 이미지 미리보기 컨테이너 */

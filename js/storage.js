@@ -63,11 +63,17 @@
         }
       }
 
+      // 첨부된 다중 이미지 목록 (기존 데이터 호환: 없으면 imageUrl을 배열로 구성)
+      let images = Array.isArray(data.images) && data.images.length > 0 
+        ? data.images 
+        : [imageUrl];
+
       return {
         id: doc.id,
         title: data.title || '',
         content: data.content || '',
-        imageUrl: imageUrl,
+        imageUrl: imageUrl, // 대표 이미지 URL
+        images: images,     // 첨부된 모든 이미지 URL 배열
         authorId: data.authorId || null,
         authorEmail: authorEmail,
         authorName: authorName,
@@ -128,11 +134,11 @@
     }
 
     /**
-     * 새 게시글 등록 (로그인된 사용자의 authorId 및 authorEmail 저장)
-     * @param {Object} postData { title, content, imageUrl }
+     * 새 게시글 등록 (다중 이미지 및 대표 이미지 저장)
+     * @param {Object} postData { title, content, imageUrl, images }
      * @returns {Promise<Object>}
      */
-    async createPost({ title, content, imageUrl }) {
+    async createPost({ title, content, imageUrl, images }) {
       const user = window.firebaseAuth?.currentUser;
       if (!user) {
         throw new Error('게시글을 작성하려면 로그인이 필요합니다.');
@@ -147,10 +153,17 @@
           ? window.cloudinaryService.defaultImage 
           : 'images/default-landscape.jpg';
 
+        const finalImages = Array.isArray(images) && images.length > 0 
+          ? images 
+          : [imageUrl || defaultImg];
+
+        const finalCover = imageUrl || finalImages[0] || defaultImg;
+
         const postData = {
           title: title.trim(),
           content: content.trim(),
-          imageUrl: imageUrl || defaultImg,
+          imageUrl: finalCover,
+          images: finalImages,
           authorId: user.uid,
           authorEmail: authorEmail,
           authorName: authorName,
@@ -174,17 +187,16 @@
     /**
      * 게시글 수정 (작성자 본인 검증 후 업데이트)
      * @param {string} id
-     * @param {Object} updateData { title, content, imageUrl }
+     * @param {Object} updateData { title, content, imageUrl, images }
      * @returns {Promise<Object>}
      */
-    async updatePost(id, { title, content, imageUrl }) {
+    async updatePost(id, { title, content, imageUrl, images }) {
       const user = window.firebaseAuth?.currentUser;
       if (!user) {
         throw new Error('게시글을 수정하려면 먼저 로그인해주세요.');
       }
 
       try {
-        // 기존 문서 검증
         const docRef = this.collection.doc(id);
         const docSnap = await docRef.get();
         if (!docSnap.exists) {
@@ -196,11 +208,22 @@
           throw new Error('본인이 작성한 게시글만 수정할 수 있습니다.');
         }
 
+        const defaultImg = (window.cloudinaryService && window.cloudinaryService.defaultImage) 
+          ? window.cloudinaryService.defaultImage 
+          : 'images/default-landscape.jpg';
+
+        const finalImages = Array.isArray(images) && images.length > 0 
+          ? images 
+          : (imageUrl ? [imageUrl] : [defaultImg]);
+
+        const finalCover = imageUrl || finalImages[0] || defaultImg;
+
         const nowTimestamp = firebase.firestore.FieldValue.serverTimestamp();
         const updateData = {
           title: title.trim(),
           content: content.trim(),
-          imageUrl: imageUrl,
+          imageUrl: finalCover,
+          images: finalImages,
           updatedAt: nowTimestamp
         };
 

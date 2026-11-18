@@ -46,26 +46,33 @@
         <h2>사진 갤러리</h2>
         <p>기억하고 싶은 순간과 이야기를 썸네일 카드 형태로 공유해보세요.</p>
       </div>
-      <div>
+      <div class="gallery-intro-controls">
         <span id="post-count" class="post-count-badge">전체 게시글: 0개</span>
-      </div>
-    </section>
 
-    <!-- 회원별 사진 정리 필터 바 -->
-    <section class="member-filter-section" aria-label="회원별 사진 정리">
-      <div class="filter-header">
-        <div class="filter-title-group">
-          <span class="filter-icon">👤</span>
-          <span class="filter-title">회원별 사진 모아보기</span>
+        <!-- 전체 게시글 옆 조그마한 회원별 사진 모아보기 드롭다운 -->
+        <div class="member-filter-dropdown" id="member-filter-dropdown">
+          <button type="button" id="btn-toggle-member-filter" class="filter-toggle-btn" aria-haspopup="true" aria-expanded="false" title="회원별 사진 모아보기">
+            <span class="filter-btn-icon">👤</span>
+            <span id="current-filter-label" class="filter-btn-text">회원별 모아보기</span>
+            <span class="dropdown-arrow">▾</span>
+          </button>
+
+          <!-- 클릭 시 펼쳐지는 회원 목록 팝오버 메뉴 -->
+          <div id="member-filter-menu" class="member-filter-menu">
+            <div class="filter-menu-header">
+              <span class="filter-menu-title">👤 회원별 사진 모아보기</span>
+              <button type="button" id="btn-close-filter-menu" class="btn-close-menu" aria-label="메뉴 닫기">&times;</button>
+            </div>
+            <div id="member-filter-chips" class="member-filter-menu-list">
+              <!-- JavaScript로 동적 회원 칩 주입 -->
+            </div>
+          </div>
         </div>
-        <div id="active-filter-indicator" class="active-filter-indicator" style="display: none;">
-          <span class="indicator-label">필터 적용:</span>
-          <span id="active-filter-name" class="indicator-name">전체</span>
-          <button type="button" id="btn-reset-filter" class="btn-clear-filter" title="필터 초기화">✕ 전체보기</button>
-        </div>
-      </div>
-      <div id="member-filter-chips" class="member-filter-chips">
-        <!-- JavaScript로 동적 회원 칩 주입 -->
+
+        <!-- 필터가 적용되었을 때 바로 옆에 나타나는 원클릭 전체보기 복귀 버튼 -->
+        <button type="button" id="btn-reset-filter" class="btn-clear-tag" style="display: none;" title="전체 사진 보기로 복귀">
+          <span id="active-filter-name">회원</span> <span class="tag-close-icon">✕</span>
+        </button>
       </div>
     </section>
 

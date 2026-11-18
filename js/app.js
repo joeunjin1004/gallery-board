@@ -21,8 +21,12 @@
   // DOM 요소 캐싱 - 메인 갤러리 & 회원별 필터
   const galleryGrid = document.getElementById('gallery-grid');
   const postCountBadge = document.getElementById('post-count');
+  const memberFilterDropdown = document.getElementById('member-filter-dropdown');
+  const btnToggleMemberFilter = document.getElementById('btn-toggle-member-filter');
+  const currentFilterLabel = document.getElementById('current-filter-label');
+  const memberFilterMenu = document.getElementById('member-filter-menu');
+  const btnCloseFilterMenu = document.getElementById('btn-close-filter-menu');
   const memberFilterChips = document.getElementById('member-filter-chips');
-  const activeFilterIndicator = document.getElementById('active-filter-indicator');
   const activeFilterName = document.getElementById('active-filter-name');
   const btnResetFilter = document.getElementById('btn-reset-filter');
 
@@ -217,18 +221,41 @@
   }
 
   // =========================================================
-  // 3. 회원별 사진 모아보기 필터 로직
+  // 3. 회원별 사진 모아보기 필터 드롭다운 로직
   // =========================================================
+
+  function toggleFilterDropdown(forceState) {
+    if (!memberFilterDropdown) return;
+    const shouldOpen = typeof forceState === 'boolean' 
+      ? forceState 
+      : !memberFilterDropdown.classList.contains('open');
+
+    if (shouldOpen) {
+      memberFilterDropdown.classList.add('open');
+      btnToggleMemberFilter?.setAttribute('aria-expanded', 'true');
+    } else {
+      memberFilterDropdown.classList.remove('open');
+      btnToggleMemberFilter?.setAttribute('aria-expanded', 'false');
+    }
+  }
+
   function applyFilter(type, id = null, name = '전체') {
     currentFilter = { type, id, name };
 
     if (type === 'all') {
-      activeFilterIndicator.style.display = 'none';
+      if (btnResetFilter) btnResetFilter.style.display = 'none';
+      if (currentFilterLabel) currentFilterLabel.textContent = '회원별 모아보기';
+    } else if (type === 'my') {
+      if (btnResetFilter) btnResetFilter.style.display = 'inline-flex';
+      if (activeFilterName) activeFilterName.textContent = '내 사진';
+      if (currentFilterLabel) currentFilterLabel.textContent = '⭐ 내 사진';
     } else {
-      activeFilterIndicator.style.display = 'inline-flex';
-      activeFilterName.textContent = name;
+      if (btnResetFilter) btnResetFilter.style.display = 'inline-flex';
+      if (activeFilterName) activeFilterName.textContent = name;
+      if (currentFilterLabel) currentFilterLabel.textContent = `👤 ${name}`;
     }
 
+    toggleFilterDropdown(false);
     renderMemberFilterChips();
     renderFilteredGallery();
   }
@@ -262,18 +289,18 @@
 
     const members = Array.from(memberMap.values());
 
-    let chipsHtml = `
-      <button type="button" class="filter-chip ${currentFilter.type === 'all' ? 'active' : ''}" data-filter-type="all">
-        <span>📁 전체 보기</span>
-        <span class="chip-count">${totalCount}</span>
+    let listHtml = `
+      <button type="button" class="filter-menu-item ${currentFilter.type === 'all' ? 'active' : ''}" data-filter-type="all">
+        <span>📁 전체 사진 보기</span>
+        <span class="item-badge">${totalCount}</span>
       </button>
     `;
 
     if (currentUser && myCount > 0) {
-      chipsHtml += `
-        <button type="button" class="filter-chip chip-my ${currentFilter.type === 'my' ? 'active' : ''}" data-filter-type="my">
+      listHtml += `
+        <button type="button" class="filter-menu-item item-my ${currentFilter.type === 'my' ? 'active' : ''}" data-filter-type="my">
           <span>⭐ 내 사진 모아보기</span>
-          <span class="chip-count">${myCount}</span>
+          <span class="item-badge">${myCount}</span>
         </button>
       `;
     }
@@ -283,26 +310,27 @@
       const isCurrentActive = currentFilter.type === 'member' && 
         ((member.id && currentFilter.id === member.id) || (!member.id && currentFilter.name === member.name));
 
-      chipsHtml += `
-        <button type="button" class="filter-chip ${isCurrentActive ? 'active' : ''}" 
+      listHtml += `
+        <button type="button" class="filter-menu-item ${isCurrentActive ? 'active' : ''}" 
                 data-filter-type="member" 
                 data-member-id="${member.id || ''}" 
                 data-member-name="${escapeHtml(member.name)}">
           <span>👤 ${escapeHtml(member.name)}${isMyKey ? ' (나)' : ''}</span>
-          <span class="chip-count">${member.count}</span>
+          <span class="item-badge">${member.count}</span>
         </button>
       `;
     });
 
-    memberFilterChips.innerHTML = chipsHtml;
+    memberFilterChips.innerHTML = listHtml;
 
-    memberFilterChips.querySelectorAll('.filter-chip').forEach(btn => {
+    // 아이템 클릭 이벤트 바인딩
+    memberFilterChips.querySelectorAll('.filter-menu-item').forEach(btn => {
       btn.addEventListener('click', () => {
         const type = btn.dataset.filterType;
         if (type === 'all') {
           applyFilter('all');
         } else if (type === 'my') {
-          applyFilter('my', currentUser.uid, '내 사진 모아보기');
+          applyFilter('my', currentUser.uid, '내 사진');
         } else if (type === 'member') {
           const id = btn.dataset.memberId || null;
           const name = btn.dataset.memberName;
@@ -866,6 +894,24 @@
     btnLogout?.addEventListener('click', handleLogout);
     btnOpenCreate?.addEventListener('click', handleCreateButtonClick);
 
+    // 회원별 모아보기 드롭다운 토글 및 닫기
+    btnToggleMemberFilter?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFilterDropdown();
+    });
+
+    btnCloseFilterMenu?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFilterDropdown(false);
+    });
+
+    // 드롭다운 외부 클릭 시 닫기
+    document.addEventListener('click', (e) => {
+      if (memberFilterDropdown && !memberFilterDropdown.contains(e.target)) {
+        toggleFilterDropdown(false);
+      }
+    });
+
     // 필터 초기화 버튼
     btnResetFilter?.addEventListener('click', () => applyFilter('all'));
 
@@ -984,6 +1030,7 @@
     // ESC 키 닫기
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
+        toggleFilterDropdown(false);
         const activeModal = document.querySelector('.modal-backdrop.active');
         if (activeModal) {
           closeModal(activeModal);

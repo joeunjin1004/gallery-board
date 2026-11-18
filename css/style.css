@@ -243,159 +243,233 @@ body {
 }
 
 /* =========================================================
-   회원별 사진 모아보기 필터 바
+   회원별 사진 모아보기 - 콤팩트 드롭다운 스타일
    ========================================================= */
-.member-filter-section {
-  background-color: var(--bg-card);
+.gallery-intro-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.member-filter-dropdown {
+  position: relative;
+  display: inline-block;
+}
+
+.filter-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.95rem;
+  background-color: #ffffff;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 1.25rem 1.5rem;
-  margin-bottom: 2rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: var(--transition);
   box-shadow: var(--shadow-sm);
 }
 
-.filter-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.filter-title-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.filter-icon {
-  font-size: 1.25rem;
-}
-
-.filter-title {
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.active-filter-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+.filter-toggle-btn:hover,
+.member-filter-dropdown.open .filter-toggle-btn {
   background-color: var(--primary-light);
-  border: 1px solid #bfdbfe;
-  padding: 0.3rem 0.75rem;
-  border-radius: 9999px;
-  font-size: 0.88rem;
-}
-
-.indicator-label {
-  color: var(--text-muted);
-}
-
-.indicator-name {
-  font-weight: 700;
+  border-color: var(--primary-color);
   color: var(--primary-color);
 }
 
-.btn-clear-filter {
+.filter-btn-icon {
+  font-size: 1rem;
+}
+
+.filter-btn-text {
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.dropdown-arrow {
+  font-size: 0.8rem;
+  transition: transform 0.2s ease;
+  color: var(--text-muted);
+}
+
+.member-filter-dropdown.open .dropdown-arrow {
+  transform: rotate(180deg);
+  color: var(--primary-color);
+}
+
+/* 클릭 시 펼쳐지는 팝오버 메뉴 */
+.member-filter-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 270px;
+  max-width: 320px;
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 0.75rem;
+  z-index: 50;
+  animation: filterMenuIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.member-filter-dropdown.open .member-filter-menu {
+  display: block;
+}
+
+@keyframes filterMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.filter-menu-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.filter-menu-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #475569;
+}
+
+.btn-close-menu {
   background: none;
   border: none;
-  color: var(--danger-color);
-  font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 1.35rem;
+  line-height: 1;
+  color: #94a3b8;
   cursor: pointer;
-  padding: 0.15rem 0.4rem;
+  padding: 0.1rem 0.3rem;
   border-radius: 4px;
   transition: var(--transition);
-  margin-left: 0.25rem;
 }
 
-.btn-clear-filter:hover {
-  background-color: #fee2e2;
+.btn-close-menu:hover {
+  color: var(--text-main);
+  background-color: #f1f5f9;
 }
 
-/* 회원 칩 목록 (가로 스크롤 대응) */
-.member-filter-chips {
+.member-filter-menu-list {
   display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  overflow-x: auto;
-  padding-bottom: 0.35rem;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 290px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
   scrollbar-width: thin;
 }
 
-.member-filter-chips::-webkit-scrollbar {
-  height: 6px;
+.member-filter-menu-list::-webkit-scrollbar {
+  width: 5px;
 }
 
-.member-filter-chips::-webkit-scrollbar-thumb {
+.member-filter-menu-list::-webkit-scrollbar-thumb {
   background-color: #cbd5e1;
   border-radius: 9999px;
 }
 
-.filter-chip {
-  display: inline-flex;
+.filter-menu-item {
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 0.45rem;
-  padding: 0.55rem 1.1rem;
-  border-radius: 9999px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  width: 100%;
+  padding: 0.55rem 0.85rem;
   background-color: #f8fafc;
-  color: #475569;
-  border: 1px solid var(--border-color);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #334155;
   cursor: pointer;
-  white-space: nowrap;
   transition: var(--transition);
-  user-select: none;
+  text-align: left;
 }
 
-.filter-chip:hover {
-  background-color: #f1f5f9;
-  border-color: #94a3b8;
-  color: var(--text-main);
-  transform: translateY(-1px);
+.filter-menu-item:hover {
+  background-color: var(--primary-light);
+  border-color: #bfdbfe;
+  color: var(--primary-color);
+  transform: translateX(2px);
 }
 
-.filter-chip.active {
+.filter-menu-item.active {
   background-color: var(--primary-color);
-  color: #ffffff;
   border-color: var(--primary-color);
-  box-shadow: 0 3px 6px rgba(37, 99, 235, 0.25);
+  color: #ffffff;
 }
 
-.filter-chip.chip-my {
+.filter-menu-item.item-my {
   background-color: #fefce8;
   border-color: #fef08a;
   color: #854d0e;
 }
 
-.filter-chip.chip-my:hover {
+.filter-menu-item.item-my:hover {
   background-color: #fef9c3;
   border-color: #fde047;
 }
 
-.filter-chip.chip-my.active {
+.filter-menu-item.item-my.active {
   background: linear-gradient(135deg, #eab308, #ca8a04);
   color: #ffffff;
   border-color: #ca8a04;
-  box-shadow: 0 3px 6px rgba(202, 138, 4, 0.25);
 }
 
-.filter-chip .chip-count {
-  font-size: 0.8rem;
+.filter-menu-item .item-badge {
+  font-size: 0.78rem;
   padding: 0.1rem 0.45rem;
   border-radius: 9999px;
   background-color: rgba(0, 0, 0, 0.08);
+  font-weight: 700;
 }
 
-.filter-chip.active .chip-count {
+.filter-menu-item.active .item-badge,
+.filter-menu-item.item-my.active .item-badge {
   background-color: rgba(255, 255, 255, 0.25);
   color: #ffffff;
+}
+
+/* 필터 적용 시 옆에 뜨는 취소 뱃지 태그 */
+.btn-clear-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.85rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #b91c1c;
+  border-radius: var(--radius-sm);
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-clear-tag:hover {
+  background-color: #fee2e2;
+  border-color: #f87171;
+  transform: scale(1.02);
+}
+
+.tag-close-icon {
+  font-size: 0.95rem;
+  line-height: 1;
 }
 
 /* 카드 하단 작성자 클릭 필터링 스타일 */

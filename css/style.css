@@ -472,6 +472,85 @@ body {
   line-height: 1;
 }
 
+/* =========================================================
+   상단 조그마한 실시간 통합 검색창 (제목, 내용/느낌, 회원)
+   ========================================================= */
+.gallery-search-box {
+  display: inline-flex;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0 0.65rem 0 0.75rem;
+  height: 38px;
+  box-shadow: var(--shadow-sm);
+  transition: var(--transition);
+  position: relative;
+}
+
+.gallery-search-box:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.search-icon {
+  font-size: 0.92rem;
+  color: #64748b;
+  margin-right: 0.45rem;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.gallery-search-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--text-main);
+  width: 195px;
+  transition: width 0.25s ease;
+}
+
+.gallery-search-input::placeholder {
+  color: #94a3b8;
+  font-size: 0.88rem;
+}
+
+.gallery-search-input:focus {
+  width: 250px;
+}
+
+.btn-clear-search {
+  background: none;
+  border: none;
+  font-size: 1.15rem;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0 0.2rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: var(--transition);
+}
+
+.btn-clear-search:hover {
+  color: var(--danger-color);
+  transform: scale(1.1);
+}
+
+@media (max-width: 640px) {
+  .gallery-search-input {
+    width: 140px;
+  }
+  .gallery-search-input:focus {
+    width: 180px;
+  }
+}
+
 /* 카드 하단 작성자 클릭 필터링 스타일 */
 .card-author-btn {
   background: none;

@@ -29,6 +29,8 @@
   const memberFilterChips = document.getElementById('member-filter-chips');
   const activeFilterName = document.getElementById('active-filter-name');
   const btnResetFilter = document.getElementById('btn-reset-filter');
+  const gallerySearchInput = document.getElementById('gallery-search-input');
+  const btnClearSearch = document.getElementById('btn-clear-search');
 
   // DOM 요소 캐싱 - 상세 모달
   const detailModal = document.getElementById('detail-modal');
@@ -77,6 +79,7 @@
   // 상태 변수
   let cachedAllPosts = []; // Firestore 실시간 동기화로 가져온 전체 게시글 원본
   let currentFilter = { type: 'all', id: null, name: '전체' }; // 'all' | 'my' | 'member'
+  let searchKeyword = ''; // 실시간 검색어 (사진명, 느낌/내용, 작성자)
   let currentDetailPost = null; // 현재 열람 중인 게시글 객체
   let currentAuthMode = 'login'; // 'login' | 'signup'
 
@@ -340,10 +343,22 @@
     });
   }
 
+  function clearSearch() {
+    searchKeyword = '';
+    if (gallerySearchInput) {
+      gallerySearchInput.value = '';
+    }
+    if (btnClearSearch) {
+      btnClearSearch.style.display = 'none';
+    }
+    renderFilteredGallery();
+  }
+
   function renderFilteredGallery() {
     const currentUser = authService.getCurrentUser();
     let filteredPosts = cachedAllPosts;
 
+    // 1. 회원별 필터 적용
     if (currentFilter.type === 'my' && currentUser) {
       filteredPosts = cachedAllPosts.filter(p => p.authorId && p.authorId === currentUser.uid);
     } else if (currentFilter.type === 'member') {
@@ -355,6 +370,20 @@
       });
     }
 
+    // 2. 통합 검색어 필터링 (사진 제목, 본문/느낌, 회원 이름, 이메일)
+    if (searchKeyword) {
+      filteredPosts = filteredPosts.filter(p => {
+        const title = (p.title || '').toLowerCase();
+        const content = (p.content || '').toLowerCase();
+        const authorName = (p.authorName || '').toLowerCase();
+        const authorEmail = (p.authorEmail || '').toLowerCase();
+        return title.includes(searchKeyword) ||
+               content.includes(searchKeyword) ||
+               authorName.includes(searchKeyword) ||
+               authorEmail.includes(searchKeyword);
+      });
+    }
+
     renderGalleryList(filteredPosts);
   }
 
@@ -363,23 +392,52 @@
   // =========================================================
   function renderGalleryList(posts) {
     const isFiltered = currentFilter.type !== 'all';
-    postCountBadge.textContent = isFiltered 
-      ? `검색 결과: ${posts.length}개 / 전체 ${cachedAllPosts.length}개`
-      : `전체 게시글: ${posts.length}개`;
+    const hasSearch = searchKeyword.length > 0;
+
+    if (hasSearch && isFiltered) {
+      postCountBadge.textContent = `'${searchKeyword}' 검색 (${currentFilter.name}): ${posts.length}개 / 전체 ${cachedAllPosts.length}개`;
+    } else if (hasSearch) {
+      postCountBadge.textContent = `'${searchKeyword}' 검색: ${posts.length}개 / 전체 ${cachedAllPosts.length}개`;
+    } else if (isFiltered) {
+      postCountBadge.textContent = `${currentFilter.name}: ${posts.length}개 / 전체 ${cachedAllPosts.length}개`;
+    } else {
+      postCountBadge.textContent = `전체 게시글: ${posts.length}개`;
+    }
 
     if (!posts || posts.length === 0) {
+      let emptyTitle = '등록된 게시글이 없습니다.';
+      let emptyDesc = '첫 번째 사진과 이야기를 등록해보세요!';
+      let emptyBtn = '<button type="button" class="btn btn-primary" id="btn-empty-create">게시글 작성하기</button>';
+
+      if (hasSearch && isFiltered) {
+        emptyTitle = `'${escapeHtml(currentFilter.name)}' 회원의 글 중 '${escapeHtml(searchKeyword)}' 검색 결과가 없습니다.`;
+        emptyDesc = '검색어를 변경하거나 회원 필터를 초기화해보세요.';
+        emptyBtn = '<button type="button" class="btn btn-outline" id="btn-empty-clear-all">검색 및 회원 필터 해제</button>';
+      } else if (hasSearch) {
+        emptyTitle = `'${escapeHtml(searchKeyword)}' 검색 결과가 없습니다.`;
+        emptyDesc = '사진 제목, 본문 느낌, 작성자 이름으로 다시 검색해보세요.';
+        emptyBtn = '<button type="button" class="btn btn-outline" id="btn-empty-clear-search">검색어 지우기</button>';
+      } else if (isFiltered) {
+        emptyTitle = `'${escapeHtml(currentFilter.name)}' 회원의 등록된 사진이 없습니다.`;
+        emptyDesc = '다른 회원을 선택하거나 전체 사진을 확인해보세요.';
+        emptyBtn = '<button type="button" class="btn btn-outline" id="btn-empty-reset">전체 사진 보기</button>';
+      }
+
       galleryGrid.innerHTML = `
         <div class="empty-state">
-          <div class="empty-state-icon">📷</div>
-          <h3>${isFiltered ? `'${escapeHtml(currentFilter.name)}' 회원의 등록된 사진이 없습니다.` : '등록된 게시글이 없습니다.'}</h3>
-          <p>${isFiltered ? '다른 회원을 선택하거나 전체 사진을 확인해보세요.' : '첫 번째 사진과 이야기를 등록해보세요!'}</p>
-          ${isFiltered 
-            ? '<button type="button" class="btn btn-outline" id="btn-empty-reset">전체 사진 보기</button>' 
-            : '<button type="button" class="btn btn-primary" id="btn-empty-create">게시글 작성하기</button>'}
+          <div class="empty-state-icon">🔍</div>
+          <h3>${emptyTitle}</h3>
+          <p>${emptyDesc}</p>
+          ${emptyBtn}
         </div>
       `;
       document.getElementById('btn-empty-create')?.addEventListener('click', handleCreateButtonClick);
       document.getElementById('btn-empty-reset')?.addEventListener('click', () => applyFilter('all'));
+      document.getElementById('btn-empty-clear-search')?.addEventListener('click', clearSearch);
+      document.getElementById('btn-empty-clear-all')?.addEventListener('click', () => {
+        clearSearch();
+        applyFilter('all');
+      });
       return;
     }
 
@@ -914,6 +972,20 @@
 
     // 필터 초기화 버튼
     btnResetFilter?.addEventListener('click', () => applyFilter('all'));
+
+    // 통합 검색 입력 및 초기화 이벤트
+    gallerySearchInput?.addEventListener('input', (e) => {
+      searchKeyword = e.target.value.trim().toLowerCase();
+      if (btnClearSearch) {
+        btnClearSearch.style.display = searchKeyword ? 'inline-flex' : 'none';
+      }
+      renderFilteredGallery();
+    });
+
+    btnClearSearch?.addEventListener('click', () => {
+      clearSearch();
+      gallerySearchInput?.focus();
+    });
 
     // 인증 모달 이벤트
     tabLogin?.addEventListener('click', () => setAuthMode('login'));

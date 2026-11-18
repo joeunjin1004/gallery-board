@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <defs>
+    <linearGradient id="forestSky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#134e5e"/>
+      <stop offset="100%" stop-color="#71b280"/>
+    </linearGradient>
+    <linearGradient id="sunRay" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fff9d2" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="mist" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- 하늘과 숲 배경 -->
+  <rect width="800" height="500" fill="url(#forestSky)"/>
+  <!-- 아침 햇살 빗줄기 -->
+  <polygon points="100,-20 280,500 200,500 50,-20" fill="url(#sunRay)"/>
+  <polygon points="250,-20 450,500 370,500 200,-20" fill="url(#sunRay)"/>
+  <polygon points="400,-20 620,500 540,500 350,-20" fill="url(#sunRay)"/>
+  <!-- 먼 나무들 (실루엣) -->
+  <g fill="#1a4731" opacity="0.6">
+    <polygon points="70,180 95,340 45,340"/>
+    <polygon points="120,160 145,340 95,340"/>
+    <polygon points="180,140 210,340 150,340"/>
+    <polygon points="250,170 280,340 220,340"/>
+    <polygon points="320,150 350,340 290,340"/>
+    <polygon points="400,160 435,340 365,340"/>
+    <polygon points="480,140 515,340 445,340"/>
+    <polygon points="560,170 595,340 525,340"/>
+    <polygon points="640,150 675,340 605,340"/>
+    <polygon points="720,160 755,340 685,340"/>
+  </g>
+  <!-- 안개 층 1 -->
+  <rect y="220" width="800" height="140" fill="url(#mist)"/>
+  <!-- 중간 나무들 -->
+  <g fill="#0e3321" opacity="0.85">
+    <polygon points="40,120 75,390 5,390"/>
+    <polygon points="150,90 190,390 110,390"/>
+    <polygon points="290,110 335,390 245,390"/>
+    <polygon points="430,80 475,390 385,390"/>
+    <polygon points="570,100 615,390 525,390"/>
+    <polygon points="700,90 745,390 655,390"/>
+  </g>
+  <!-- 안개 층 2 -->
+  <rect y="280" width="800" height="160" fill="url(#mist)"/>
+  <!-- 전경 큰 나무와 언덕 -->
+  <ellipse cx="400" cy="530" rx="550" ry="170" fill="#071e13"/>
+  <g fill="#05160e">
+    <polygon points="0,50 45,460 -45,460"/>
+    <polygon points="790,60 845,470 735,470"/>
+    <polygon points="210,130 250,470 170,470"/>
+    <polygon points="630,110 675,470 585,470"/>
+  </g>
+  <!-- 텍스트 배지 -->
+  <rect x="25" y="25" rx="6" ry="6" width="180" height="34" fill="#000000" opacity="0.5"/>
+  <text x="115" y="47" fill="#ffffff" font-family="-apple-system, sans-serif" font-size="14" font-weight="600" text-anchor="middle">🌲 신비로운 아침 안개 숲</text>
+</svg>

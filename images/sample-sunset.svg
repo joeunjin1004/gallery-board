@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <defs>
+    <linearGradient id="sunsetSky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4a154b"/>
+      <stop offset="35%" stop-color="#c84b31"/>
+      <stop offset="70%" stop-color="#ff8c42"/>
+      <stop offset="100%" stop-color="#ffdc89"/>
+    </linearGradient>
+    <linearGradient id="oceanGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ff8c42"/>
+      <stop offset="30%" stop-color="#a43820"/>
+      <stop offset="100%" stop-color="#1f1124"/>
+    </linearGradient>
+    <linearGradient id="sunGlow" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#fff176"/>
+    </linearGradient>
+  </defs>
+  <!-- 하늘 -->
+  <rect width="800" height="320" fill="url(#sunsetSky)"/>
+  <!-- 석양 태양 -->
+  <circle cx="400" cy="270" r="60" fill="url(#sunGlow)"/>
+  <circle cx="400" cy="270" r="100" fill="#fff176" opacity="0.25"/>
+  <!-- 바다 수평선 -->
+  <rect y="310" width="800" height="190" fill="url(#oceanGrad)"/>
+  <!-- 바다 노을 반사광 -->
+  <polygon points="350,310 450,310 520,500 280,500" fill="#ffecb3" opacity="0.35"/>
+  <ellipse cx="400" cy="330" rx="60" ry="4" fill="#ffffff" opacity="0.8"/>
+  <ellipse cx="400" cy="360" rx="90" ry="5" fill="#ffffff" opacity="0.6"/>
+  <ellipse cx="400" cy="400" rx="140" ry="6" fill="#ffffff" opacity="0.4"/>
+  <ellipse cx="400" cy="450" rx="200" ry="7" fill="#ffffff" opacity="0.2"/>
+  <!-- 해변 실루엣 -->
+  <path d="M0,450 Q200,430 400,470 T800,440 L800,500 L0,500 Z" fill="#140a17"/>
+  <!-- 야자수 실루엣 -->
+  <path d="M720,500 Q715,400 680,330 Q650,280 620,250" stroke="#140a17" stroke-width="12" fill="none"/>
+  <path d="M620,250 Q560,240 520,270" stroke="#140a17" stroke-width="6" fill="none"/>
+  <path d="M620,250 Q580,210 550,180" stroke="#140a17" stroke-width="6" fill="none"/>
+  <path d="M620,250 Q630,190 640,160" stroke="#140a17" stroke-width="6" fill="none"/>
+  <path d="M620,250 Q670,200 700,190" stroke="#140a17" stroke-width="6" fill="none"/>
+  <path d="M620,250 Q690,240 730,260" stroke="#140a17" stroke-width="6" fill="none"/>
+  <!-- 텍스트 배지 -->
+  <rect x="25" y="25" rx="6" ry="6" width="160" height="34" fill="#000000" opacity="0.5"/>
+  <text x="105" y="47" fill="#ffffff" font-family="-apple-system, sans-serif" font-size="14" font-weight="600" text-anchor="middle">🌅 해질녘 노을 바다</text>
+</svg>

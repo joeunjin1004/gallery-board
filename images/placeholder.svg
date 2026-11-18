@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="50%" stop-color="#2563eb"/>
+      <stop offset="100%" stop-color="#1d4ed8"/>
+    </linearGradient>
+  </defs>
+  <rect width="800" height="500" fill="url(#bgGrad)"/>
+  <!-- 기하학 장식 패턴 -->
+  <circle cx="700" cy="80" r="140" fill="#ffffff" opacity="0.08"/>
+  <circle cx="100" cy="420" r="180" fill="#ffffff" opacity="0.06"/>
+  <!-- 중앙 아이콘 -->
+  <g transform="translate(350, 170)">
+    <rect x="0" y="0" width="100" height="80" rx="12" fill="none" stroke="#ffffff" stroke-width="6"/>
+    <circle cx="30" cy="28" r="9" fill="#ffffff"/>
+    <polygon points="12,68 40,40 62,58 75,46 88,68" fill="#ffffff"/>
+  </g>
+  <text x="400" y="300" fill="#ffffff" font-family="-apple-system, sans-serif" font-size="22" font-weight="700" text-anchor="middle" letter-spacing="-0.02em">
+    갤러리 포스트
+  </text>
+  <text x="400" y="332" fill="#dbeafe" font-family="-apple-system, sans-serif" font-size="15" text-anchor="middle">
+    Gallery Board
+  </text>
+</svg>

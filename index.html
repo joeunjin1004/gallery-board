@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>갤러리 보드 (Gallery Board)</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- 헤더 영역 -->
+  <header class="site-header">
+    <div class="header-container">
+      <div class="logo-area">
+        <div class="logo-icon">🖼️</div>
+        <div>
+          <h1 class="site-title">갤러리 보드 <span class="site-badge">Firebase & Cloudinary</span></h1>
+        </div>
+      </div>
+      <!-- 인증 및 게시글 작성 액션 영역 -->
+      <div id="header-actions" class="header-actions">
+        <!-- 비로그인 상태일 때 표시 -->
+        <div id="guest-actions" style="display: flex; gap: 0.5rem; align-items: center;">
+          <button id="btn-open-login" class="btn btn-outline btn-sm">로그인</button>
+          <button id="btn-open-signup" class="btn btn-primary btn-sm">회원가입</button>
+        </div>
+
+        <!-- 로그인 상태일 때 표시 -->
+        <div id="user-actions" style="display: none; gap: 0.6rem; align-items: center; flex-wrap: wrap;">
+          <div class="user-badge">
+            <span>👤</span>
+            <span id="user-display-name" class="user-name">사용자</span>님
+          </div>
+          <button id="btn-open-create" class="btn btn-primary btn-sm">
+            <span>✏️</span> 새 글 작성
+          </button>
+          <button id="btn-logout" class="btn btn-outline btn-sm">로그아웃</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 콘텐츠 영역 -->
+  <main class="main-content">
+    <section class="gallery-intro">
+      <div>
+        <h2>사진 갤러리</h2>
+        <p>기억하고 싶은 순간과 이야기를 썸네일 카드 형태로 공유해보세요.</p>
+      </div>
+      <div>
+        <span id="post-count" class="post-count-badge">전체 게시글: 0개</span>
+      </div>
+    </section>
+
+    <!-- 게시글 목록 그리드 (PC 3열 / 모바일 반응형) -->
+    <section id="gallery-grid" class="gallery-grid" aria-label="게시글 목록">
+      <!-- JavaScript로 동적 렌더링 -->
+    </section>
+  </main>
+
+  <!-- 푸터 영역 -->
+  <footer class="site-footer">
+    <div class="footer-info">
+      <strong>Gallery Board</strong>
+      <span>•</span>
+      <span class="badge-tag">Phase 3: Firebase & Cloudinary</span>
+      <span class="badge-tag">Secure Cloud Storage</span>
+    </div>
+    <p>© 2026 갤러리 게시판. All rights reserved.</p>
+  </footer>
+
+  <!-- 1. 게시글 상세 보기 모달 -->
+  <div id="detail-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="detail-title">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="detail-title">게시글 상세</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="detail-modal" aria-label="닫기">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="detail-image-wrapper">
+          <img id="detail-image" class="detail-image" src="" alt="게시글 대표 이미지">
+        </div>
+        <div class="detail-meta">
+          <div class="detail-author-info">
+            <span>👤 작성자:</span>
+            <span id="detail-author" style="color: var(--primary-color);">익명 사용자</span>
+          </div>
+          <div>
+            <span id="detail-date" class="card-date">📅 -</span>
+          </div>
+        </div>
+        <div id="detail-content" class="detail-content"></div>
+      </div>
+      <div class="modal-footer">
+        <!-- 본인 작성 글일 때만 자바스크립트로 노출 제어 -->
+        <button type="button" id="btn-detail-delete" class="btn btn-danger" style="display: none;">삭제하기</button>
+        <button type="button" id="btn-detail-edit" class="btn btn-outline" style="display: none;">수정하기</button>
+        <button type="button" class="btn btn-outline" data-close-modal="detail-modal">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 게시글 작성 / 수정 모달 -->
+  <div id="form-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="form-modal-title">
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3 id="form-modal-title">새 게시글 작성</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="form-modal" aria-label="닫기">&times;</button>
+      </div>
+      <form id="post-form">
+        <div class="modal-body">
+          <input type="hidden" id="post-id" value="">
+          
+          <div class="form-group">
+            <label for="post-title" class="form-label">제목 <span class="required">*</span></label>
+            <input type="text" id="post-title" class="form-input" placeholder="게시글 제목을 입력하세요" required maxlength="100">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">대표 이미지 (선택)</label>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+              이미지를 첨부하지 않으면 기본 갤러리 이미지가 자동 적용됩니다.
+            </p>
+
+            <!-- 파일 선택 인풋 (숨김) -->
+            <input type="file" id="post-image-file" accept="image/*" style="display: none;">
+            <input type="hidden" id="existing-image-url" value="">
+
+            <!-- 드롭존 / 업로드 영역 -->
+            <div id="upload-dropzone" class="upload-dropzone">
+              <div class="upload-icon">☁️</div>
+              <p class="upload-text"><strong>클릭</strong>하여 사진을 선택하거나 여기로 <strong>드래그</strong>하세요</p>
+              <p class="upload-hint">JPG, PNG, GIF, WebP (최대 10MB)</p>
+            </div>
+
+            <!-- 선택된 이미지 미리보기 -->
+            <div id="image-preview-container" class="image-preview-container" style="display: none;">
+              <div class="preview-image-wrapper">
+                <img id="image-preview" src="" alt="선택된 이미지 미리보기">
+                <button type="button" id="btn-remove-image" class="btn-remove-image" title="이미지 제거">&times;</button>
+              </div>
+              <div class="preview-info">
+                <span id="preview-filename" class="preview-filename">image.jpg</span>
+                <button type="button" id="btn-change-image" class="btn btn-outline btn-sm">이미지 변경</button>
+              </div>
+            </div>
+
+            <!-- 업로드 진행 상태 표시 바 -->
+            <div id="upload-progress-container" class="upload-progress-container" style="display: none;">
+              <div class="progress-bar-bg">
+                <div id="upload-progress-bar" class="progress-bar-fill" style="width: 0%;"></div>
+              </div>
+              <div class="upload-status-row">
+                <span id="upload-status-text" class="upload-status-text">Cloudinary 업로드 중... 0%</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="post-content" class="form-label">내용 <span class="required">*</span></label>
+            <textarea id="post-content" class="form-textarea" placeholder="게시글 내용을 입력하세요" required rows="5"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" data-close-modal="form-modal">취소</button>
+          <button type="submit" id="btn-form-submit" class="btn btn-primary">등록하기</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. 로그인 / 회원가입 인증 모달 -->
+  <div id="auth-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="auth-modal-title">
+    <div class="modal-container modal-sm">
+      <div class="modal-header">
+        <h3 id="auth-modal-title">로그인</h3>
+        <button type="button" class="modal-close-btn" data-close-modal="auth-modal" aria-label="닫기">&times;</button>
+      </div>
+      <div class="modal-body">
+        <!-- 탭 전환 (로그인 / 회원가입) -->
+        <div class="auth-tabs">
+          <button type="button" id="tab-login" class="auth-tab-btn active">로그인</button>
+          <button type="button" id="tab-signup" class="auth-tab-btn">회원가입</button>
+        </div>
+
+        <!-- 에러 메시지 알림 박스 -->
+        <div id="auth-error-box" class="auth-error-box"></div>
+
+        <form id="auth-form">
+          <!-- 닉네임 입력 (회원가입 시에만 노출) -->
+          <div id="nickname-group" class="form-group" style="display: none;">
+            <label for="auth-nickname" class="form-label">닉네임</label>
+            <input type="text" id="auth-nickname" class="form-input" placeholder="게시판에 표시될 이름을 입력하세요" maxlength="20">
+          </div>
+
+          <!-- 이메일 입력 -->
+          <div class="form-group">
+            <label for="auth-email" class="form-label">이메일 <span class="required">*</span></label>
+            <input type="email" id="auth-email" class="form-input" placeholder="example@email.com" required autocomplete="username">
+          </div>
+
+          <!-- 비밀번호 입력 -->
+          <div class="form-group">
+            <label for="auth-password" class="form-label">비밀번호 <span class="required">*</span></label>
+            <input type="password" id="auth-password" class="form-input" placeholder="6자리 이상 비밀번호 입력" required minlength="6" autocomplete="current-password">
+          </div>
+
+          <div style="margin-top: 1.5rem;">
+            <button type="submit" id="btn-auth-submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.75rem;">
+              로그인
+            </button>
+          </div>
+
+          <div class="auth-switch-text">
+            <span id="auth-switch-prompt">계정이 없으신가요?</span>
+            <span id="auth-switch-btn" class="auth-switch-link">회원가입</span>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDK (v10 compat: 로컬 실행 및 브라우저 호환) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+
+  <!-- 애플리케이션 스크립트 -->
+  <script src="js/firebaseConfig.js"></script>
+  <script src="js/cloudinaryService.js"></script>
+  <script src="js/sampleImages.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

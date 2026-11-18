@@ -1,6 +1,6 @@
 /**
  * 갤러리 보드 메인 애플리케이션 로직
- * Firebase Firestore, Firebase Authentication & Cloudinary 통합
+ * Firebase Firestore, Firebase Authentication, Cloudinary & 회원별 사진 모아보기 필터 통합
  */
 (function() {
   const postService = window.postService;
@@ -16,9 +16,13 @@
   const btnLogout = document.getElementById('btn-logout');
   const btnOpenCreate = document.getElementById('btn-open-create');
 
-  // DOM 요소 캐싱 - 메인 갤러리
+  // DOM 요소 캐싱 - 메인 갤러리 & 회원별 필터
   const galleryGrid = document.getElementById('gallery-grid');
   const postCountBadge = document.getElementById('post-count');
+  const memberFilterChips = document.getElementById('member-filter-chips');
+  const activeFilterIndicator = document.getElementById('active-filter-indicator');
+  const activeFilterName = document.getElementById('active-filter-name');
+  const btnResetFilter = document.getElementById('btn-reset-filter');
 
   // DOM 요소 캐싱 - 상세 모달
   const detailModal = document.getElementById('detail-modal');
@@ -66,6 +70,8 @@
   const authSwitchBtn = document.getElementById('auth-switch-btn');
 
   // 상태 변수
+  let cachedAllPosts = []; // Firestore 실시간 동기화로 가져온 전체 게시글 원본
+  let currentFilter = { type: 'all', id: null, name: '전체' }; // 'all' | 'my' | 'member'
   let currentDetailPost = null; // 현재 열람 중인 게시글 객체
   let currentAuthMode = 'login'; // 'login' | 'signup'
   let currentSelectedFile = null; // 사용자가 새로 선택한 이미지 파일
@@ -122,7 +128,14 @@
     } else {
       guestActions.style.display = 'flex';
       userActions.style.display = 'none';
+      // 만약 '내 사진 모아보기' 필터 중 로그아웃된 경우 '전체'로 초기화
+      if (currentFilter.type === 'my') {
+        applyFilter('all');
+      }
     }
+
+    // 회원 필터 칩 바 재계산 및 렌더링
+    renderMemberFilterChips();
 
     if (currentDetailPost) {
       updateDetailModalActionButtons(currentDetailPost);
@@ -204,21 +217,162 @@
   }
 
   // =========================================================
-  // 3. 갤러리 목록 렌더링
+  // 3. 회원별 사진 모아보기 필터 로직
+  // =========================================================
+
+  /**
+   * 필터 적용 함수
+   * @param {'all'|'my'|'member'} type 필터 타입
+   * @param {string|null} id 회원 UID 또는 고유 식별자
+   * @param {string} name 화면에 표시할 회원 이름
+   */
+  function applyFilter(type, id = null, name = '전체') {
+    currentFilter = { type, id, name };
+
+    // 인디케이터 표시 제어
+    if (type === 'all') {
+      activeFilterIndicator.style.display = 'none';
+    } else {
+      activeFilterIndicator.style.display = 'inline-flex';
+      activeFilterName.textContent = name;
+    }
+
+    renderMemberFilterChips();
+    renderFilteredGallery();
+  }
+
+  /**
+   * 회원 필터 칩 목록 동적 렌더링
+   */
+  function renderMemberFilterChips() {
+    if (!memberFilterChips) return;
+
+    const currentUser = authService.getCurrentUser();
+    const totalCount = cachedAllPosts.length;
+
+    // 1. 고유 회원 및 글 개수 집계
+    const memberMap = new Map();
+    let myCount = 0;
+
+    cachedAllPosts.forEach(post => {
+      // 내 사진 개수 계산
+      if (currentUser && post.authorId && post.authorId === currentUser.uid) {
+        myCount++;
+      }
+
+      // 회원별 그룹화 키 (authorId 우선, 없으면 authorName)
+      const memberKey = post.authorId || post.authorName || 'unknown';
+      const memberDisplayName = post.authorName || (post.authorEmail ? post.authorEmail.split('@')[0] : '익명 사용자');
+
+      if (!memberMap.has(memberKey)) {
+        memberMap.set(memberKey, {
+          id: post.authorId || null,
+          name: memberDisplayName,
+          count: 0
+        });
+      }
+      memberMap.get(memberKey).count += 1;
+    });
+
+    const members = Array.from(memberMap.values());
+
+    let chipsHtml = `
+      <button type="button" class="filter-chip ${currentFilter.type === 'all' ? 'active' : ''}" data-filter-type="all">
+        <span>📁 전체 보기</span>
+        <span class="chip-count">${totalCount}</span>
+      </button>
+    `;
+
+    // 로그인 상태이고 내가 작성한 글이 있다면 '내 사진 모아보기' 칩 추가
+    if (currentUser && myCount > 0) {
+      chipsHtml += `
+        <button type="button" class="filter-chip chip-my ${currentFilter.type === 'my' ? 'active' : ''}" data-filter-type="my">
+          <span>⭐ 내 사진 모아보기</span>
+          <span class="chip-count">${myCount}</span>
+        </button>
+      `;
+    }
+
+    // 각 회원별 칩 생성
+    members.forEach(member => {
+      // 로그인한 본인의 별도 칩과 중복되지 않도록 처리
+      const isMyKey = currentUser && member.id && member.id === currentUser.uid;
+      const isCurrentActive = currentFilter.type === 'member' && 
+        ((member.id && currentFilter.id === member.id) || (!member.id && currentFilter.name === member.name));
+
+      chipsHtml += `
+        <button type="button" class="filter-chip ${isCurrentActive ? 'active' : ''}" 
+                data-filter-type="member" 
+                data-member-id="${member.id || ''}" 
+                data-member-name="${escapeHtml(member.name)}">
+          <span>👤 ${escapeHtml(member.name)}${isMyKey ? ' (나)' : ''}</span>
+          <span class="chip-count">${member.count}</span>
+        </button>
+      `;
+    });
+
+    memberFilterChips.innerHTML = chipsHtml;
+
+    // 칩 클릭 이벤트 바인딩
+    memberFilterChips.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const type = btn.dataset.filterType;
+        if (type === 'all') {
+          applyFilter('all');
+        } else if (type === 'my') {
+          applyFilter('my', currentUser.uid, '내 사진 모아보기');
+        } else if (type === 'member') {
+          const id = btn.dataset.memberId || null;
+          const name = btn.dataset.memberName;
+          applyFilter('member', id, name);
+        }
+      });
+    });
+  }
+
+  /**
+   * 현재 필터 조건에 따라 필터링된 게시글 렌더링
+   */
+  function renderFilteredGallery() {
+    const currentUser = authService.getCurrentUser();
+    let filteredPosts = cachedAllPosts;
+
+    if (currentFilter.type === 'my' && currentUser) {
+      filteredPosts = cachedAllPosts.filter(p => p.authorId && p.authorId === currentUser.uid);
+    } else if (currentFilter.type === 'member') {
+      filteredPosts = cachedAllPosts.filter(p => {
+        if (currentFilter.id && p.authorId) {
+          return p.authorId === currentFilter.id;
+        }
+        return (p.authorName || '익명 사용자') === currentFilter.name;
+      });
+    }
+
+    renderGalleryList(filteredPosts);
+  }
+
+  // =========================================================
+  // 4. 갤러리 목록 렌더링
   // =========================================================
   function renderGalleryList(posts) {
-    postCountBadge.textContent = `전체 게시글: ${posts.length}개`;
+    const isFiltered = currentFilter.type !== 'all';
+    postCountBadge.textContent = isFiltered 
+      ? `검색 결과: ${posts.length}개 / 전체 ${cachedAllPosts.length}개`
+      : `전체 게시글: ${posts.length}개`;
 
     if (!posts || posts.length === 0) {
       galleryGrid.innerHTML = `
         <div class="empty-state">
           <div class="empty-state-icon">📷</div>
-          <h3>등록된 게시글이 없습니다.</h3>
-          <p>첫 번째 사진과 이야기를 등록해보세요!</p>
-          <button type="button" class="btn btn-primary" id="btn-empty-create">게시글 작성하기</button>
+          <h3>${isFiltered ? `'${escapeHtml(currentFilter.name)}' 회원의 등록된 사진이 없습니다.` : '등록된 게시글이 없습니다.'}</h3>
+          <p>${isFiltered ? '다른 회원을 선택하거나 전체 사진을 확인해보세요.' : '첫 번째 사진과 이야기를 등록해보세요!'}</p>
+          ${isFiltered 
+            ? '<button type="button" class="btn btn-outline" id="btn-empty-reset">전체 사진 보기</button>' 
+            : '<button type="button" class="btn btn-primary" id="btn-empty-create">게시글 작성하기</button>'}
         </div>
       `;
       document.getElementById('btn-empty-create')?.addEventListener('click', handleCreateButtonClick);
+      document.getElementById('btn-empty-reset')?.addEventListener('click', () => applyFilter('all'));
       return;
     }
 
@@ -241,7 +395,15 @@
             <h3 class="card-title">${escapeHtml(post.title)}</h3>
             <p class="card-excerpt">${escapeHtml(excerpt)}</p>
             <div class="card-footer">
-              <span class="card-author" title="${escapeHtml(post.authorEmail || authorText)}">👤 ${escapeHtml(authorText)}</span>
+              <!-- 작성자 이름 클릭 시 해당 회원의 사진만 모아보기 -->
+              <button type="button" 
+                      class="card-author-btn" 
+                      data-filter-author-id="${post.authorId || ''}" 
+                      data-filter-author-name="${escapeHtml(authorText)}" 
+                      title="${escapeHtml(authorText)}님의 사진 모아보기">
+                <span>👤</span>
+                <span>${escapeHtml(authorText)}</span>
+              </button>
               <span class="card-date">📅 ${formatDate(post.createdAt)}</span>
             </div>
           </div>
@@ -270,13 +432,17 @@
 
   function initRealtimeSync() {
     postService.subscribePosts(
-      (posts) => renderGalleryList(posts),
+      (posts) => {
+        cachedAllPosts = posts;
+        renderMemberFilterChips();
+        renderFilteredGallery();
+      },
       (error) => renderErrorMessage(error)
     );
   }
 
   // =========================================================
-  // 4. 상세 보기 모달 & 본인 게시글 권한 제어
+  // 5. 상세 보기 모달 & 본인 게시글 권한 제어
   // =========================================================
   function updateDetailModalActionButtons(post) {
     const currentUser = authService.getCurrentUser();
@@ -319,7 +485,7 @@
   }
 
   // =========================================================
-  // 5. 이미지 업로더 UI 및 파일 처리 로직
+  // 6. 이미지 업로더 UI 및 파일 처리 로직
   // =========================================================
   function showDropzone() {
     uploadDropzone.style.display = 'flex';
@@ -368,7 +534,6 @@
 
     currentSelectedFile = file;
 
-    // 로컬 미리보기 생성
     const reader = new FileReader();
     reader.onload = (e) => {
       showPreview(e.target.result, file.name);
@@ -377,7 +542,7 @@
   }
 
   // =========================================================
-  // 6. 작성 / 수정 모달 로직
+  // 7. 작성 / 수정 모달 로직
   // =========================================================
   function handleCreateButtonClick() {
     const currentUser = authService.getCurrentUser();
@@ -429,7 +594,6 @@
 
       resetImageUploader();
 
-      // 기존 이미지가 있다면 미리보기에 세팅
       if (post.imageUrl) {
         currentExistingImageUrl = post.imageUrl;
         existingImageUrlInput.value = post.imageUrl;
@@ -478,7 +642,6 @@
 
       let finalImageUrl = currentExistingImageUrl || '';
 
-      // 1. 새 이미지 파일이 첨부된 경우 -> Cloudinary 업로드 수행
       if (currentSelectedFile) {
         uploadProgressContainer.style.display = 'block';
         uploadProgressBar.style.width = '0%';
@@ -493,7 +656,6 @@
 
       btnFormSubmit.textContent = editId ? '수정 내용 저장 중...' : '게시글 저장 중...';
 
-      // 2. Firestore에 게시글 저장
       if (editId) {
         await postService.updatePost(editId, { 
           title, 
@@ -559,7 +721,7 @@
   }
 
   // =========================================================
-  // 7. 이벤트 리스너 등록
+  // 8. 이벤트 리스너 등록
   // =========================================================
   function initEventListeners() {
     // 헤더 버튼
@@ -567,6 +729,9 @@
     btnOpenSignup?.addEventListener('click', () => openAuthModal('signup'));
     btnLogout?.addEventListener('click', handleLogout);
     btnOpenCreate?.addEventListener('click', handleCreateButtonClick);
+
+    // 필터 초기화 버튼
+    btnResetFilter?.addEventListener('click', () => applyFilter('all'));
 
     // 인증 모달 이벤트
     tabLogin?.addEventListener('click', () => setAuthMode('login'));
@@ -612,7 +777,6 @@
       }
     });
 
-    // 이미지 제거 버튼
     btnRemoveImage?.addEventListener('click', () => {
       currentSelectedFile = null;
       currentExistingImageUrl = '';
@@ -621,8 +785,19 @@
       showDropzone();
     });
 
-    // 갤러리 카드 클릭 시 상세 보기
+    // 갤러리 카드 및 작성자 클릭 이벤트 위임
     galleryGrid.addEventListener('click', (e) => {
+      // 1. 작성자 이름 버튼 클릭 시 -> 해당 회원 사진 필터 적용!
+      const authorBtn = e.target.closest('.card-author-btn');
+      if (authorBtn) {
+        e.stopPropagation();
+        const authorId = authorBtn.dataset.filterAuthorId || null;
+        const authorName = authorBtn.dataset.filterAuthorName;
+        applyFilter('member', authorId, authorName);
+        return;
+      }
+
+      // 2. 카드 본체 클릭 시 -> 상세 모달 오픈
       const card = e.target.closest('.gallery-card');
       if (card && card.dataset.postId) {
         openDetailModal(card.dataset.postId);
@@ -637,6 +812,16 @@
         }
       }
     });
+
+    // 상세 모달 내 작성자 클릭 시에도 해당 회원 모아보기 지원
+    detailAuthor?.addEventListener('click', () => {
+      if (currentDetailPost) {
+        closeModal(detailModal);
+        applyFilter('member', currentDetailPost.authorId || null, currentDetailPost.authorName || '작성자');
+      }
+    });
+    detailAuthor.style.cursor = 'pointer';
+    detailAuthor.title = '클릭 시 이 작성자의 사진만 모아보기';
 
     // 상세 모달 내 수정 / 삭제
     btnDetailEdit?.addEventListener('click', () => {

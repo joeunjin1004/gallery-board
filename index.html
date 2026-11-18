@@ -51,6 +51,24 @@
       </div>
     </section>
 
+    <!-- 회원별 사진 정리 필터 바 -->
+    <section class="member-filter-section" aria-label="회원별 사진 정리">
+      <div class="filter-header">
+        <div class="filter-title-group">
+          <span class="filter-icon">👤</span>
+          <span class="filter-title">회원별 사진 모아보기</span>
+        </div>
+        <div id="active-filter-indicator" class="active-filter-indicator" style="display: none;">
+          <span class="indicator-label">필터 적용:</span>
+          <span id="active-filter-name" class="indicator-name">전체</span>
+          <button type="button" id="btn-reset-filter" class="btn-clear-filter" title="필터 초기화">✕ 전체보기</button>
+        </div>
+      </div>
+      <div id="member-filter-chips" class="member-filter-chips">
+        <!-- JavaScript로 동적 회원 칩 주입 -->
+      </div>
+    </section>
+
     <!-- 게시글 목록 그리드 (PC 3열 / 모바일 반응형) -->
     <section id="gallery-grid" class="gallery-grid" aria-label="게시글 목록">
       <!-- JavaScript로 동적 렌더링 -->
